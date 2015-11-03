@@ -2,6 +2,7 @@ import numpy as np
 
 import sunpy
 import sunpy.cm
+import sunpy.map
 import astropy.io.fits as pyfits
 
 import pickle
@@ -29,35 +30,31 @@ files = glob('/storage2/SDO/jet/*304a*.fits')
 files.sort()
 
 # read the fits headers
-# used for setting the 
-hdulist = pyfits.open('')
-prihdr = hdulist[0].header
-ondisk = (prihdr['R_SUN'] - 1400)
-limb = ondisk
+m = sunpy.map.Map(files[0])
 
 # the plotting instructions
 fig = plt.figure()
-im = plt.imshow(files[0],origin='lower',interpolation='nearest',vmax=files[0][:,ondisk:].max()/18, vmin=files[0][:,ondisk:].min())
-plt.axhline(limb)
+im = plt.imshow(m.data,origin='lower',interpolation='nearest', norm=m.plot_settings['norm'])
 
-# colour map used matching with SDO/AIA 30.4nm 
+# colour map used matching with SDO/AIA 30.4nm
 plt.set_cmap(sunpy.cm.get_cmap('sdoaia304'))
 axes = plt.subplot(111)
 plt.subplots_adjust(bottom=0.2)
 
 
-# class using the functions 
+# class using the functions
 prop_list = []
 class Index:
     ind = 0
     plot_points = None
     cid = None
-    
+
     def next(self, event):
         self.ind += 1
         i = self.ind % len(files)
-        im.set_array(np.load(files[i], mmap_mode='r')[:,:8000])
-        my_title.set_text(files[i].replace('/',' ').split()[-1][:-4])
+        mm = sunpy.map.Map(files[i])
+        im.set_array(mm.data)
+        my_title.set_text(mm.name)
         print 'NEXT'
         try:
             x = np.array(prop_list[-1].points[-1])
@@ -75,7 +72,7 @@ class Index:
         im.set_array(np.load(files[i], mmap_mode='r')[:,:8000])
         my_title.set_text(files[i].replace('/',' ').split()[-1][:-4])
         plt.draw()
-        
+
     def begin(self, event):
         print 'START FEATURE'
         prop_list.append(properties(axes.axis(),limb))
@@ -86,17 +83,18 @@ class Index:
     def fbigskip(self, event):
         self.ind += 9
         self.next(event)
-        
+
     def bbigskip(self, event):
         self.ind -= 9
         self.prev(event)
-        
+
     def points(self, event):
         print 'CONFIRM'
-        tempfile = pyfits.open(files[self.ind])
-        # you will need to change this depending on 
+        #tempfile = pyfits.open(files[self.ind])
+        tempmap = sunpy.map.Map(files[self.ind])
+        # you will need to change this depending on
         # how time is defined in the fits header
-        real_time = tempfile['DATE-OBS']
+        real_time = tempmap.date
 
         print len(prop_list[-1].points)
         if len(prop_list[-1].points) > 1:
@@ -105,11 +103,11 @@ class Index:
             except Exception as E:
                 print E
                 import pdb; pdb.set_trace()
-                
+
         prop_list[-1].addstep(self.ind, real_time, self.abcd[0], self.abcd[1],
                               self.abcd[2], self.abcd[3])
         print prop_list[-1]
-    
+
     def record(self, event):
         print 'RECORD'
         self.abcd = []
@@ -117,21 +115,21 @@ class Index:
         if self.cid:
             fig.canvas.mpl_disconnect(self.cid)
         self.cid = fig.canvas.mpl_connect('button_press_event', self.get_click)
-        
+
     def get_click(self, event):
         print('you pressed', event.button, event.xdata, event.ydata)
         self.abcd.append([event.xdata, event.ydata])
         print np.shape(self.abcd), len(self.abcd)
         self.check_abcd()
-    
+
     def check_abcd(self):
-        if len(self.abcd) == 2:  
+        if len(self.abcd) == 2:
             vec_mid = []
             vec_mid.append((self.abcd[0][0] + self.abcd[1][0])/2.0)
             vec_mid.append((self.abcd[0][1] + self.abcd[1][1])/2.0)
             self.midx = vec_mid[0]
             self.midy = vec_mid[1]
-            
+
             c1 = [(self.midx - 20.0), (self.midy - 10.0)]
             c2 = [(self.midx + 20.0), (self.midy + 10.0)]
             axes.axis([c1[0], c2[0], c1[1], c2[1]])
@@ -139,8 +137,8 @@ class Index:
             yran = self.line_equ2(c1, c2)
             self.wid_line = axes.plot(xran, yran)
             return False
-            
-        elif len(self.abcd) == 4:            
+
+        elif len(self.abcd) == 4:
             fig.canvas.mpl_disconnect(self.cid)
             self.cid = None
             del self.cursor
@@ -151,30 +149,32 @@ class Index:
             return True
         else:
             return False
-            
+
     def save_im(self, event):
-        tempfile = pyfits.open(files[self.ind])
-        real_time = tempfile['DATE-OBS']        
+        tempmap = sunpy.map.Map(files[self.ind])
+        # you will need to change this depending on
+        # how time is defined in the fits header
+        real_time = tempmap.date
         print real_time
         # you'll need to change this destiniation to save images of macrospicules
         return plt.savefig('/your_file_path_here/AutoSpic/' + real_time + '.png')
-        
+
     def delete(self, event):
         fig.canvas.mpl_disconnect(self.cid)
         self.cid = None
-        try:            
+        try:
             del self.cursor
         except Exception as E:
             print E
         self.abcd = []
-        
+
     def line_equ1(self, abcd):
         p1 = self.abcd[0]
         p2 = self.abcd[1]
         lin_grad1 = (p2[1] - p1[1])/(p2[0] - p1[0])
         c = p2[1] - lin_grad1*p2[0]
         return lin_grad1, c
-        
+
     def line_equ2(self, c1, c2):
         tb_line = self.line_equ1(self.abcd)
         print "tb line = %f"%tb_line[0]
@@ -187,23 +187,25 @@ class Index:
 
     def zone1(self, event):
         prop_list[-1].zone = "Coronal Hole"
-        
+
     def zone2(self, event):
         prop_list[-1].zone = "Coronal Hole Boundary"
 
     def zone3(self, event):
-        prop_list[-1].zone = "Quiet Sun"        
-        
-    
-        
-        
+        prop_list[-1].zone = "Quiet Sun"
+
+
+
+
 
 # set up the figure
 
 plt.xlabel('Theta round the centre of the Sun in Radians')
 plt.ylabel('Arcseconds')
-tempfile = pyfits.open(files[0])
-real_time = tempfile['DATE-OBS']
+tempmap = sunpy.map.Map(files[0])
+# you will need to change this depending on
+# how time is defined in the fits header
+real_time = tempmap.date
 my_title = plt.title('Spicule on the Date of %s' % real_time)
 
 
@@ -265,8 +267,7 @@ plt.show()
 
 # save the spicule
 # define the file path to save the pickle files out to
-f = open("/home/sam/Dropbox/Sam/test/" + sf + ".pik",'wb')
-pickle.dump(prop_list,f)
-f.close()
+with open(sf + ".pik",'wb') as f:
+    pickle.dump(prop_list,f)
 
 print 'Im finished now!'
