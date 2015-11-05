@@ -9,6 +9,7 @@ import numpy as np
 
 import sunpy
 import sunpy.cm
+import sunpy.map
 import astropy.io.fits as pyfits
 
 import pickle
@@ -32,9 +33,10 @@ class Index(object):
     def next(self, event):
         self.ind += 1
         i = self.ind % len(files)
-        im.set_array(np.load(files[i], mmap_mode='r')[:, :8000])
-        my_title.set_text(files[i].replace('/', ' ').split()[-1][:-4])
-        print('NEXT')
+        mm = sunpy.map.Map(files[i])
+        im.set_array(mm.data)
+        my_title.set_text(mm.name)
+        print 'NEXT'
         try:
             x = np.array(prop_list[-1].points[-1])
             if self.plot_points:
@@ -48,8 +50,8 @@ class Index(object):
     def prev(self, event):
         self.ind -= 1
         i = self.ind % len(files)
-        im.set_array(np.load(files[i], mmap_mode='r')[:, :8000])
-        my_title.set_text(files[i].replace('/', ' ').split()[-1][:-4])
+        im.set_array(np.load(files[i], mmap_mode='r')[:,:8000])
+        my_title.set_text(files[i].replace('/',' ').split()[-1][:-4])
         plt.draw()
 
     def begin(self, event):
@@ -69,10 +71,11 @@ class Index(object):
 
     def points(self, event):
         print('CONFIRM')
-        tempfile = pyfits.open(files[self.ind])
+        #tempfile = pyfits.open(files[self.ind])
+        tempmap = sunpy.map.Map(files[self.ind])
         # you will need to change this depending on
         # how time is defined in the fits header
-        real_time = tempfile['DATE-OBS']
+        real_time = tempmap.date
 
         print(len(prop_list[-1].points))
         if len(prop_list[-1].points) > 1:
@@ -129,11 +132,13 @@ class Index(object):
             return False
 
     def save_im(self, event):
-        tempfile = pyfits.open(files[self.ind])
-        real_time = tempfile['DATE-OBS']
-        print(real_time)
-        # you need to change this destiniation to save images of macrospicules
-        return plt.savefig(self.path + real_time + '.png')
+        tempmap = sunpy.map.Map(files[self.ind])
+        # you will need to change this depending on
+        # how time is defined in the fits header
+        real_time = tempmap.date
+        print real_time
+        # you'll need to change this destiniation to save images of macrospicules
+        return plt.savefig('/your_file_path_here/AutoSpic/' + real_time + '.png')
 
     def delete(self, event):
         fig.canvas.mpl_disconnect(self.cid)
@@ -168,8 +173,8 @@ class Index(object):
         prop_list[-1].zone = "Coronal Hole Boundary"
 
     def zone3(self, event):
-        prop_list[-1].zone = "Quiet Sun"
-
+        prop_list[-1].zone = "Quiet Sun"        
+        
 # input the date im looking at and start at this date
 d = '2013_01_24'
 prompt = '> '
@@ -207,15 +212,16 @@ plt.subplots_adjust(bottom=0.2)
 
 
 # class using the functions
-prop_list = []
-
+prop_list = []       
 
 # set up the figure
 
 plt.xlabel('Theta round the centre of the Sun in Radians')
 plt.ylabel('Arcseconds')
-tempfile = pyfits.open(files[0])
-real_time = tempfile['DATE-OBS']
+tempmap = sunpy.map.Map(files[0])
+# you will need to change this depending on
+# how time is defined in the fits header
+real_time = tempmap.date
 my_title = plt.title('Spicule on the Date of %s' % real_time)
 
 
@@ -276,8 +282,7 @@ plt.show()
 
 # save the spicule
 # define the file path to save the pickle files out to
-f = open("/home/sam/Dropbox/Sam/test/" + sf + ".pik", 'wb')
-pickle.dump(prop_list, f)
-f.close()
+with open(sf + ".pik",'wb') as f:
+    pickle.dump(prop_list,f)
 
-print('Im finished now!')
+print 'Im finished now!'
