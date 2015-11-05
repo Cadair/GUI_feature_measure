@@ -17,6 +17,9 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, Cursor
 
 from glob import glob
+
+from os.path import expanduser
+
 from def_prop import properties
 
 
@@ -49,8 +52,9 @@ class Index(object):
     def prev(self, event):
         self.ind -= 1
         i = self.ind % len(files)
-        im.set_array(np.load(files[i], mmap_mode='r')[:, :8000])
-        my_title.set_text(files[i].replace('/', ' ').split()[-1][:-4])
+        mm = sunpy.map.Map(files[i])
+        im.set_array(mm.data)
+        my_title.set_text(mm.name)
         plt.draw()
 
     def begin(self, event):
@@ -70,7 +74,6 @@ class Index(object):
 
     def points(self, event):
         print('CONFIRM')
-        # tempfile = pyfits.open(files[self.ind])
         tempmap = sunpy.map.Map(files[self.ind])
         # you will need to change this depending on
         # how time is defined in the fits header
@@ -132,12 +135,12 @@ class Index(object):
 
     def save_im(self, event):
         tempmap = sunpy.map.Map(files[self.ind])
-        # you will need to change this depending on
-        # how time is defined in the fits header
+        # you might change this depending on the how time is defined
         real_time = tempmap.date
         print(real_time)
         # you need to change this destiniation to save images of macrospicules
-        return plt.savefig(self.path + real_time + '.png')
+        plt.savefig(self.path + str(real_time) + self.wavelength + '.png')
+        return None
 
     def delete(self, event):
         fig.canvas.mpl_disconnect(self.cid)
@@ -183,7 +186,7 @@ sf = raw_input(prompt)
 
 # Wavelength and save directory
 wavelength = '304'
-savedir = 'SAVEDIR'
+savedir = expanduser('~')
 
 # set up the initial files and some parameter
 # change these for each data set
@@ -199,7 +202,7 @@ limb = (m.meta['R_SUN'] - 1400)
 fig = plt.figure()
 im = plt.imshow(m.data, origin='lower', interpolation='nearest',
                 norm=m.plot_settings['norm'])
-# plt.axhline(limb)
+plt.axhline(limb)
 
 # colour map used matching with SDO/AIA 30.4nm
 plt.set_cmap(sunpy.cm.get_cmap('sdoaia304'))
