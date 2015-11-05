@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov 16 15:55:35 2012
-
-@author: sam
+@author: CyclingNinja
 """
 
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
+
 import astropy.units as u
 
 # These will need to change dependant on the instrument you're using
@@ -35,8 +36,8 @@ class properties():
                  has BBox: %s
                  has limb: %f
                  has location: %s
-                 has points: %s """%(str(self.frames), str([i.strftime('%Y_%m_%d_%H_%M_%S') for i in self.times]),
-                                     str(self.BBox), self.limb, str(self.zone), str(self.points))
+                 has points: %s """ % (str(self.frames), str([i.strftime('%Y_%m_%d_%H_%M_%S') for i in self.times]),
+                                       str(self.BBox), self.limb, str(self.zone), str(self.points))
         return astr
 
     def addstep(self, frame, time, A, B, C, D):
@@ -61,7 +62,6 @@ class properties():
 
     def all_width(self):
         return [self.width(i) for i in xrange(len(self.frames))]
-
 
     def area(self, frame):
         l = self.length(frame)
@@ -91,12 +91,10 @@ class properties():
         else:
             return 90.0 - alpha2
 
-
-
     def all_tilt(self):
         return [self.tilt(i) for i in xrange(len(self.frames))]
 
-    def loc(self,frame):
+    def loc(self, frame):
         A = self.points[frame][0]
         meas = A[0] * (360.0/8000.0)
         return meas
@@ -108,7 +106,6 @@ class properties():
         A = self.points[frame][0]
         fi = A[0] * (360.0/8000.0)
         return fi
-
 
     def all_lat(self):
         return [self.lat(i) for i in xrange(len(self.frames))]
@@ -130,7 +127,6 @@ class properties():
             velocity = dels/delT
             return velocity
 
-
     def all_vel(self):
         return [self.vel(i) for i in xrange(len(self.frames))]
 
@@ -140,5 +136,3 @@ class properties():
     def deltatime(self):
         origint = self.times[0]
         return np.array(self.times) - origint
-
-
