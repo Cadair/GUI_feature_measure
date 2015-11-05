@@ -10,7 +10,6 @@ import numpy as np
 import sunpy
 import sunpy.cm
 import sunpy.map
-import astropy.io.fits as pyfits
 
 import pickle
 
@@ -23,7 +22,7 @@ from def_prop import properties
 
 class Index(object):
 
-    def __init(self, wavelength, savedir):
+    def __init__(self, wavelength, savedir):
         self.wavelength = wavelength
         self.ind = 0
         self.plot_points = None
@@ -184,7 +183,7 @@ sf = raw_input(prompt)
 
 # Wavelength and save directory
 wavelength = '304'
-savedir = 'YOURPATH'
+savedir = 'SAVEDIR'
 
 # set up the initial files and some parameter
 # change these for each data set
@@ -193,23 +192,19 @@ files.sort()
 
 # read the fits headers
 # used for setting the
-hdulist = pyfits.open(files[0])
-prihdr = hdulist[0].header
-ondisk = (prihdr['R_SUN'] - 1400)
-limb = ondisk
+m = sunpy.map.Map(files[0])
+limb = (m.meta['R_SUN'] - 1400)
 
 # the plotting instructions
 fig = plt.figure()
-im = plt.imshow(files[0], origin='lower', interpolation='nearest',
-                vmax=files[0][:, ondisk:].max()/18,
-                vmin=files[0][:, ondisk:].min())
-plt.axhline(limb)
+im = plt.imshow(m.data, origin='lower', interpolation='nearest',
+                norm=m.plot_settings['norm'])
+# plt.axhline(limb)
 
 # colour map used matching with SDO/AIA 30.4nm
 plt.set_cmap(sunpy.cm.get_cmap('sdoaia304'))
 axes = plt.subplot(111)
 plt.subplots_adjust(bottom=0.2)
-
 
 # class using the functions
 prop_list = []
@@ -278,7 +273,6 @@ bposs2 = Button(axzone3, "Quiet Sun")
 bposs2.on_clicked(callback.zone3)
 
 plt.show()
-
 
 # save the spicule
 # define the file path to save the pickle files out to
